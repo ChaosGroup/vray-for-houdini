@@ -10,42 +10,53 @@
 
 import hou
 
+# tests the node's type, or if a node would error out.
+def _validVrayRop(node):
+    try:
+        result = node.type().name() == 'vray_renderer'
+    except:
+        result = ''
+    
+    return result
+    
 
-def _createVRayRop():
-    vrayNode = hou.node("/out").createNode("vray_renderer")
+def _createVrayRop():
+    vrayRopNode = hou.node('/out').createNode('vray_renderer')
+    
+    return vrayRopNode
 
-    return vrayNode
 
-
-def _getVRayRop():
-    vrayROP = hou.node(hou.getenv("curVRayROP"))
-
-    vray_node_types = hou.nodeType(hou.ropNodeTypeCategory(), "vray_renderer")
-    vray_nodes = vray_node_types.instances()
-
-    if vray_nodes:
-        sel_vray_nodes = [i for i in vray_nodes if i.isSelected()]
-
-        vray_rops = sel_vray_nodes if sel_vray_nodes else vray_nodes
-
-        # Use first available
-        vrayROP = vray_rops[0]
-        hou.putenv("curVRayROP", vrayROP.path())
+def _getVrayRop():
+    vrayRopPath = hou.session.curVrayRopPath if hasattr(hou.session, 'curVrayRopPath') else ''
+    
+    # safety incase vrayRopPath gets overwritten with a different value type
+    if type(vrayRopPath).__name__ != 'str':
+        vrayRopPath = ''
+    
+    vrayRopType = hou.nodeType(hou.ropNodeTypeCategory(), "vray_renderer")
+    vrayRopNodes = vrayRopType.instances()
+    vrayRopSelection = [i for i in vrayRopNodes if i.isSelected()]
+    
+    if vrayRopSelection:
+        vrayRop = vrayRopSelection[0]
     else:
-        if not vrayROP:
-            vrayROP = _createVRayRop()
-            hou.putenv("curVRayROP", vrayROP.path())
-        else:
-            vrayROP = hou.node(hou.getenv("curVRayROP"))
-
-    return vrayROP
+        vrayRop = hou.node(vrayRopPath)
+        if not _validVrayRop(vrayRop):
+            if vrayRopNodes:
+                vrayRop = vrayRopNodes[0]
+            else:
+                vrayRop = _createVrayRop()
+                
+    hou.session.curVrayRopPath = vrayRop.path()
+    
+    return vrayRop
 
 
 def render():
-    vrayNode = _getVRayRop()
-    vrayNode.parm('execute').pressButton()
+    vrayRopNode = _getVrayRop()
+    vrayRopNode.parm('execute').pressButton()
 
 
 def render_rt():
-    vrayNode = _getVRayRop()
-    vrayNode.parm('render_rt').pressButton()
+    vrayRopNode = _getVrayRop()
+    vrayRopNode.parm('render_rt').pressButton()
